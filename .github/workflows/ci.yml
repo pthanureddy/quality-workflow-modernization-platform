@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore QualityWorkflow.sln
+      - run: dotnet build QualityWorkflow.sln --configuration Release --no-restore
+      - name: Run provider-independent tests
+        run: dotnet test QualityWorkflow.sln --configuration Release --no-build --filter "Category!=SqlServer" --collect:"XPlat Code Coverage" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: TestResults/
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  sqlserver:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: "Developer"
+          MSSQL_SA_PASSWORD: "QualityWorkflow!2026"
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore QualityWorkflow.sln
+      - name: Apply migrations and round-trip data through SQL Server
+        env:
+          SQLSERVER_TEST_CONNECTION: "Server=localhost,1433;Database=QualityWorkflowCi;User Id=sa;Password=QualityWorkflow!2026;TrustServerCertificate=true;Encrypt=false"
+        run: dotnet test tests/QualityWorkflow.Api.Tests/QualityWorkflow.Api.Tests.csproj --configuration Release --filter "Category=SqlServer"
+
