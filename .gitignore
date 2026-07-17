@@ -1,0 +1,16 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+web/node_modules/
+web/dist/
+web/coverage/
+TestResults/
+coverage/
+.env
+
