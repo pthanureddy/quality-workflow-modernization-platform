@@ -89,11 +89,12 @@ Required columns are `legacy_id`, `title`, `owner`, `version`, `status`, and `re
 ```powershell
 dotnet test QualityWorkflow.sln --configuration Release
 cd web
+npm audit --audit-level=high
 npm test
 npm run build
 ```
 
-The verified test inventory is 14 backend tests and 2 React tests. Backend checks cover migration imports, malformed data, workflow transitions, stale revisions, SQLite initialization, HTTP behavior, dashboard aggregation, and a SQL Server-specific migration/round-trip path. CI runs provider-independent tests, the frontend build/tests, and the SQL Server test as separate jobs.
+The verified test inventory is 14 backend tests and 2 React tests. Backend checks cover migration imports, malformed data, workflow transitions, stale revisions, SQLite initialization, HTTP behavior, dashboard aggregation, and a SQL Server-specific migration/round-trip path. CI runs provider-independent tests, a high-severity npm dependency audit, the frontend build/tests, and the SQL Server test as separate jobs.
 
 ## Limitations
 
