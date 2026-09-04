@@ -13,15 +13,15 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - run: dotnet restore QualityWorkflow.sln
       - run: dotnet build QualityWorkflow.sln --configuration Release --no-restore
       - name: Run provider-independent tests
         run: dotnet test QualityWorkflow.sln --configuration Release --no-build --filter "Category!=SqlServer" --collect:"XPlat Code Coverage" --results-directory TestResults
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-test-results
@@ -33,16 +33,19 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm audit --audit-level=high
+      - run: npm run lint
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run check:bundle
 
   sqlserver:
     runs-on: ubuntu-latest
@@ -56,8 +59,8 @@ jobs:
         ports:
           - 1433:1433
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - run: dotnet restore QualityWorkflow.sln
