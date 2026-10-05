@@ -15,6 +15,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsSer
             EntityNotFoundException => StatusCodes.Status404NotFound,
             WorkflowConflictException => StatusCodes.Status409Conflict,
             WorkflowValidationException => StatusCodes.Status400BadRequest,
+            AiProviderException => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status500InternalServerError
         };
 

@@ -1,0 +1,13 @@
+.git
+.github
+.vs
+**/bin
+**/obj
+**/node_modules
+web/dist
+TestResults
+coverage
+*.db
+*.db-shm
+*.db-wal
+*.user

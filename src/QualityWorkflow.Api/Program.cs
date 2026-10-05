@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using QualityWorkflow.Api.Ai;
 using QualityWorkflow.Api.Contracts;
 using QualityWorkflow.Api.Data;
 using QualityWorkflow.Api.Domain;
@@ -11,6 +14,25 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddScoped<LegacyProcedureImporter>();
 builder.Services.AddScoped<ProcedureWorkflowService>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.Configure<AiReviewOptions>(builder.Configuration.GetSection(AiReviewOptions.SectionName));
+builder.Services.AddSingleton<DeterministicContentReviewer>();
+builder.Services.AddHttpClient<AzureOpenAiContentReviewer>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<AiReviewOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 60));
+});
+builder.Services.AddScoped<IAiContentReviewer>(serviceProvider =>
+    serviceProvider.GetRequiredService<DeterministicContentReviewer>());
+builder.Services.AddScoped<IAiContentReviewer>(serviceProvider =>
+    serviceProvider.GetRequiredService<AzureOpenAiContentReviewer>());
+builder.Services.AddScoped<ContentReviewService>();
+builder.Services.AddSingleton<AiReviewTelemetry>();
+builder.Services.AddRateLimiter(options => options.AddFixedWindowLimiter("ai-review", limiter =>
+{
+    limiter.PermitLimit = 10;
+    limiter.Window = TimeSpan.FromMinutes(1);
+    limiter.QueueLimit = 0;
+}));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration["FrontendOrigin"] ?? "http://localhost:5173")
         .AllowAnyHeader()
@@ -35,6 +57,7 @@ builder.Services.AddDbContext<QualityDbContext>(options =>
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseCors();
+app.UseRateLimiter();
 
 if (!string.Equals(builder.Configuration["DatabaseInitialization"], "None", StringComparison.OrdinalIgnoreCase))
 {
@@ -137,6 +160,17 @@ app.MapPatch("/api/procedures/{procedureId:guid}/status", async (
     ProcedureWorkflowService workflowService,
     CancellationToken cancellationToken) =>
     Results.Ok(await workflowService.ChangeStatusAsync(procedureId, request, cancellationToken)));
+
+app.MapPost("/api/procedures/{procedureId:guid}/ai-review", async (
+    Guid procedureId,
+    AiContentReviewRequest request,
+    ContentReviewService reviewService,
+    CancellationToken cancellationToken) =>
+    Results.Ok(await reviewService.ReviewAsync(procedureId, request, cancellationToken)))
+    .RequireRateLimiting("ai-review");
+
+app.MapGet("/api/operations/ai-review", (AiReviewTelemetry telemetry) =>
+    Results.Ok(telemetry.Snapshot()));
 
 app.MapGet("/api/audit", async (QualityDbContext dbContext, CancellationToken cancellationToken) =>
 {

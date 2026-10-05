@@ -36,6 +36,10 @@ Legacy CSV export -> Browser / React + TypeScript UI
 - `Data`: EF Core mappings, provider-neutral migrations, indexes, and seed data.
 - `LegacyProcedureImporter`: CSV schema checks, row-level validation, idempotent upserts, and import audit entries.
 - `ProcedureWorkflowService`: legal state transitions, optimistic concurrency through a revision token, and change auditing.
+- `ContentReviewService`: request limits, revision checks, provider selection, structured-output validation, source digesting, metadata-only audit evidence, and mandatory human-review status.
+- `DeterministicContentReviewer`: transparent local/CI fallback rules; it is not an LLM.
+- `AzureOpenAiContentReviewer`: optional .NET `HttpClient` adapter for structured Azure OpenAI responses; keys and deployment settings remain external.
+- `AiReviewTelemetry`: structured metrics for completed/failed work and latency plus an activity span for trace correlation.
 - Minimal API routes: HTTP validation and serialization only; domain decisions remain in services.
 - `App.tsx`: page composition, deferred register filtering, dashboard counts, CSV workflow, loading/ready/unavailable refresh state, focus management, live announcements, and revision-aware state changes. A confirmed status update is applied and announced before the dashboard/register refresh, so a failed follow-up read does not misreport the completed write as failed.
 - `api.ts`: the REST transport boundary, problem-detail handling, and client-side CSV preflight checks.
@@ -68,9 +72,15 @@ The register retains native table semantics at wide viewports, with a caption, s
 
 The loaded interface is scanned with axe-core during the Vitest suite. The `color-contrast` rule is excluded because jsdom cannot calculate rendered colors; contrast must therefore be checked in a real browser. These automated and structural checks reduce accessibility risk but do not constitute a WCAG conformance claim. Manual keyboard, screen-reader, zoom/reflow, and browser contrast checks remain part of a production readiness review.
 
+## AI boundary and observability
+
+AI review content crosses a separate application boundary. Inputs are limited by section count and character size. Provider output is accepted only when severity, confidence, finding-code uniqueness, and evidence-section references pass validation. The audit table stores the provider, source digest, procedure revision, finding count, and human-review flag rather than source text or generated text. Every response requires human review and cannot change procedure state.
+
+The review path emits structured logs, a `System.Diagnostics.ActivitySource` span, and `System.Diagnostics.Metrics` counters and duration histograms. These are instrumentation points, not a claim that a production collector or alerting system is running. The Azure Bicep blueprint supplies Container Apps and Log Analytics resources; production still needs telemetry export configuration and alert rules.
+
 ## Automated quality gates
 
-The frontend CI job uses Node.js 24 and runs reproducible installation, a high-severity npm audit, ESLint with zero warnings, TypeScript checking, 15 Vitest tests, a production build, and deterministic gzip bundle checks. JavaScript has a 55 KiB budget and CSS has a 5 KiB budget; the current verified output is 48.80 KiB and 2.03 KiB respectively. Backend CI runs 13 provider-independent tests, while a separate SQL Server service-container job runs the fourteenth test against the deployed-provider path.
+The frontend CI job uses Node.js 24 and runs reproducible installation, a high-severity npm audit, ESLint with zero warnings, TypeScript checking, 15 Vitest tests, a production build, and deterministic gzip bundle checks. JavaScript has a 55 KiB budget and CSS has a 5 KiB budget; the current verified output is 48.80 KiB and 2.03 KiB respectively. Backend CI runs formatting, build, and 21 provider-independent tests, while a separate SQL Server service-container job runs the twenty-second test against the deployed-provider path. Additional jobs build the API container and compile/lint the Azure Bicep blueprint.
 
 ## Trade-offs and limits
 
@@ -80,3 +90,5 @@ The frontend CI job uses Node.js 24 and runs reproducible installation, a high-s
 - Corrective actions are represented in the database and dashboard but do not yet have create/update HTTP routes.
 - The revision token prevents lost updates. SQL Server `rowversion` could replace it if all supported database providers can use provider-specific concurrency behavior.
 - Client-side validation, runtime response parsing, and accessible interaction patterns are defense-in-depth measures, not substitutes for authorization or evidence of full WCAG conformance.
+- AI findings are suggestions, not approvals. The Azure OpenAI path needs external credentials and model evaluation; the deterministic fallback provides repeatable tests but is not a model-quality baseline.
+- The deployment blueprint is design evidence only and has not been applied to an Azure subscription.

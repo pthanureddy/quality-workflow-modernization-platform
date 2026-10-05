@@ -18,6 +18,7 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - run: dotnet restore QualityWorkflow.sln
+      - run: dotnet format QualityWorkflow.sln --verify-no-changes --no-restore
       - run: dotnet build QualityWorkflow.sln --configuration Release --no-restore
       - name: Run provider-independent tests
         run: dotnet test QualityWorkflow.sln --configuration Release --no-build --filter "Category!=SqlServer" --collect:"XPlat Code Coverage" --results-directory TestResults
@@ -68,4 +69,19 @@ jobs:
         env:
           SQLSERVER_TEST_CONNECTION: "Server=localhost,1433;Database=QualityWorkflowCi;User Id=sa;Password=QualityWorkflow!2026;TrustServerCertificate=true;Encrypt=false"
         run: dotnet test tests/QualityWorkflow.Api.Tests/QualityWorkflow.Api.Tests.csproj --configuration Release --filter "Category=SqlServer"
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t quality-workflow-modernization-platform .
+
+  azure-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compile Bicep deployment
+        run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+      - name: Lint Bicep deployment
+        run: az bicep lint --file infra/azure/main.bicep
 
