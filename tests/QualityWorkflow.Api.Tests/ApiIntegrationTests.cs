@@ -11,6 +11,39 @@ namespace QualityWorkflow.Api.Tests;
 public sealed class ApiIntegrationTests
 {
     [Fact]
+    public async Task Audit_endpoint_returns_latest_100_appends_with_preserved_timestamps()
+    {
+        using var factory = new QualityWorkflowApiFactory();
+        using var client = factory.CreateInitializedClient();
+        var timestamp = new DateTimeOffset(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<QualityDbContext>();
+            dbContext.AuditEntries.AddRange(Enumerable.Range(1, 105).Select(index => new AuditEntry
+            {
+                EntityType = nameof(ProcedureRecord),
+                EntityId = Guid.NewGuid(),
+                Action = "SyntheticReview",
+                Detail = $"Append {index}",
+                OccurredAt = timestamp.AddSeconds(-index)
+            }));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var response = await client.GetAsync("/api/audit");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var entries = await response.Content.ReadFromJsonAsync<List<AuditEntryDto>>();
+        Assert.NotNull(entries);
+        Assert.Equal(100, entries.Count);
+        Assert.Equal(105, entries[0].Id);
+        Assert.Equal(6, entries[^1].Id);
+        Assert.Equal(timestamp.AddSeconds(-105), entries[0].OccurredAt);
+        Assert.Equal(entries.Select(entry => entry.Id).OrderByDescending(id => id),
+            entries.Select(entry => entry.Id));
+    }
+
+    [Fact]
     public async Task Health_endpoint_reports_the_configured_provider()
     {
         using var factory = new QualityWorkflowApiFactory();

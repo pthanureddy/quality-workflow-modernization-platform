@@ -176,7 +176,8 @@ app.MapGet("/api/audit", async (QualityDbContext dbContext, CancellationToken ca
 {
     var entries = await dbContext.AuditEntries
         .AsNoTracking()
-        .OrderByDescending(x => x.OccurredAt)
+        // Append IDs give both supported providers a stable, bounded history order.
+        .OrderByDescending(x => x.Id)
         .Take(100)
         .Select(x => new AuditEntryDto(
             x.Id,

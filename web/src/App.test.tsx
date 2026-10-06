@@ -194,6 +194,44 @@ describe('procedure register', () => {
     expect(screen.getByText('Data unavailable')).toBeInTheDocument();
   });
 
+  it('keeps a confirmed import and reports a follow-up refresh failure separately', async () => {
+    vi.mocked(api.loadProcedures)
+      .mockResolvedValueOnce(procedures)
+      .mockRejectedValueOnce(new Error('Refresh failed'));
+    render(<App />);
+    await screen.findByText('Document control');
+    const file = new File(['legacy_id,title'], 'procedures.csv', { type: 'text/csv' });
+
+    fireEvent.change(screen.getByLabelText('Legacy CSV'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import records' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Import complete: 1 created, 1 updated, 0 rejected',
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The import was saved, but the latest dashboard data could not be refreshed.',
+    );
+    expect(screen.getByText('Document control')).toBeInTheDocument();
+    expect(screen.getByText('Data unavailable')).toBeInTheDocument();
+    expect(api.importProcedures).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Import records' })).toBeEnabled();
+  });
+
+  it('reports an import API rejection without announcing a completed import', async () => {
+    vi.mocked(api.importProcedures).mockRejectedValue(new Error('Required CSV column missing.'));
+    render(<App />);
+    await screen.findByText('Document control');
+    const file = new File(['legacy_id,title'], 'procedures.csv', { type: 'text/csv' });
+
+    fireEvent.change(screen.getByLabelText('Legacy CSV'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import records' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Required CSV column missing.');
+    expect(screen.queryByText(/Import complete:/)).not.toBeInTheDocument();
+    expect(api.loadProcedures).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Document control')).toBeInTheDocument();
+  });
+
   it('renders status through the reusable native Web Component', async () => {
     render(<App />);
     await screen.findByText('Document control');

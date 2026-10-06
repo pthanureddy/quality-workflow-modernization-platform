@@ -145,8 +145,12 @@ export default function App() {
       setImportMessage(
         `${result.created} created, ${result.updated} updated, ${result.rejected} rejected`,
       );
-      await refresh();
       form.reset();
+      try {
+        await refresh();
+      } catch {
+        setError('The import was saved, but the latest dashboard data could not be refreshed.');
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Import failed');
     } finally {

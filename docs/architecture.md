@@ -41,7 +41,7 @@ Legacy CSV export -> Browser / React + TypeScript UI
 - `AzureOpenAiContentReviewer`: optional .NET `HttpClient` adapter for structured Azure OpenAI responses; keys and deployment settings remain external.
 - `AiReviewTelemetry`: structured metrics for completed/failed work and latency plus an activity span for trace correlation.
 - Minimal API routes: HTTP validation and serialization only; domain decisions remain in services.
-- `App.tsx`: page composition, deferred register filtering, dashboard counts, CSV workflow, loading/ready/unavailable refresh state, focus management, live announcements, and revision-aware state changes. A confirmed status update is applied and announced before the dashboard/register refresh, so a failed follow-up read does not misreport the completed write as failed.
+- `App.tsx`: page composition, deferred register filtering, dashboard counts, CSV workflow, loading/ready/unavailable refresh state, focus management, live announcements, and revision-aware state changes. Confirmed status updates and imports are announced before the dashboard/register refresh. The import form is reset after a confirmed save, and a failed follow-up read reports the stale dashboard separately from the completed write.
 - `api.ts`: the REST transport boundary, problem-detail handling, and client-side CSV preflight checks.
 - `contract.ts`: runtime parsers that accept `unknown`, reject malformed payloads, and produce typed dashboard, procedure, and import-result objects.
 - `workflow-status-badge.ts`: the React-free native `workflow-status-badge` custom element. Its Shadow DOM owns badge rendering and styling, allowing use outside React.
@@ -59,6 +59,8 @@ SQL Server is the deployed provider path and applies the checked-in EF Core migr
 - an append-only audit table for import and workflow events.
 
 The SQL Server CI job starts SQL Server 2022, applies the real migration, inserts a procedure, clears the EF tracking state, and reads the row back through the SQL Server provider.
+
+`GET /api/audit` returns the latest 100 persisted appends by descending audit ID. Event timestamps remain in each response, but they do not determine append ordering. This avoids provider-specific timestamp ordering and keeps the limit in the database instead of loading the whole history into application memory.
 
 ## Error handling
 
@@ -80,7 +82,7 @@ The review path emits structured logs, a `System.Diagnostics.ActivitySource` spa
 
 ## Automated quality gates
 
-The frontend CI job uses Node.js 24 and runs reproducible installation, a high-severity npm audit, ESLint with zero warnings, TypeScript checking, 15 Vitest tests, a production build, and deterministic gzip bundle checks. JavaScript has a 55 KiB budget and CSS has a 5 KiB budget; the current verified output is 48.80 KiB and 2.03 KiB respectively. Backend CI runs formatting, build, and 21 provider-independent tests, while a separate SQL Server service-container job runs the twenty-second test against the deployed-provider path. Additional jobs build the API container and compile/lint the Azure Bicep blueprint.
+The frontend CI job uses Node.js 24 and runs reproducible installation, a high-severity npm audit, ESLint with zero warnings, TypeScript checking, 17 Vitest tests, a production build, and deterministic gzip bundle checks. JavaScript has a 55 KiB budget and CSS has a 5 KiB budget; the current verified output is 48.81 KiB and 2.03 KiB respectively. Backend CI runs formatting, build, and 22 provider-independent tests, while a separate SQL Server service-container job runs the twenty-third test against the deployed-provider path. Additional jobs build the API container and compile/lint the Azure Bicep blueprint.
 
 ## Trade-offs and limits
 

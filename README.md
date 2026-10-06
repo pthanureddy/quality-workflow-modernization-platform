@@ -17,6 +17,7 @@ The repository is not connected to a commercial quality-management product and c
 - Renders workflow states through a reusable native `workflow-status-badge` Web Component.
 - Supports keyboard navigation, focused status announcements for successful workflow changes, a semantic data table, and a responsive card reflow for narrow screens.
 - Reports data refresh state as loading, ready, or unavailable rather than presenting a static connectivity claim.
+- Preserves successful import results when the following dashboard refresh fails, with a separate message explaining that the import was saved.
 - Runs with SQLite for local development and SQL Server 2022 for the deployed-provider path.
 - Reviews versioned technical-content sections through a bounded .NET AI-provider interface while preserving source-section evidence and mandatory human review.
 - Supports deterministic local review and an optional Azure OpenAI adapter with strict structured-output validation and secrets supplied only through configuration.
@@ -116,11 +117,13 @@ npm run build
 npm run check:bundle
 ```
 
-The verified inventory is 15 frontend tests and 22 backend tests. The backend total consists of 21 provider-independent tests plus one SQL Server migration/round-trip test. Frontend checks cover loading and refresh state, filtering, workflow actions and conflicts, retention of a confirmed change when its follow-up refresh fails, import validation/results, API failure handling, runtime response contracts, the Web Component, and an axe-core scan. The axe test disables `color-contrast` because jsdom does not calculate the rendered color information that rule requires; it is one automated check, not a WCAG conformance claim.
+The verified inventory is 17 frontend tests and 23 backend tests. The backend total consists of 22 provider-independent tests plus one SQL Server migration/round-trip test. Frontend checks cover loading and refresh state, filtering, workflow actions and conflicts, retention of a confirmed change when its follow-up refresh fails, import validation/results, API failure handling, runtime response contracts, the Web Component, and an axe-core scan. The axe test disables `color-contrast` because jsdom does not calculate the rendered color information that rule requires; it is one automated check, not a WCAG conformance claim.
 
-The AI integration adds 8 backend tests for request limits, optimistic-concurrency handling, source-linked findings, metadata-only auditing, operations counters, deterministic fallback behavior, Azure OpenAI request construction, response parsing, configuration failure, and upstream HTTP failure.
+The backend inventory includes 8 AI-review tests for request limits, optimistic-concurrency handling, source-linked findings, metadata-only auditing, operations counters, deterministic fallback behavior, Azure OpenAI request construction, response parsing, configuration failure, and upstream HTTP failure.
 
-The production build is also checked against deterministic gzip budgets: 55 KiB for all JavaScript and 5 KiB for all CSS. The current verified output is 48.80 KiB of JavaScript and 2.03 KiB of CSS. CI runs the dependency audit, ESLint, TypeScript checking, frontend tests, production build, bundle budgets, provider-independent backend tests, and the SQL Server path.
+The production build is also checked against deterministic gzip budgets: 55 KiB for all JavaScript and 5 KiB for all CSS. The current verified output is 48.81 KiB of JavaScript and 2.03 KiB of CSS. CI runs the dependency audit, ESLint, TypeScript checking, frontend tests, production build, bundle budgets, provider-independent backend tests, and the SQL Server path.
+
+See [AI-assisted development record](docs/ai-assisted-development.md) for the reviewed import-failure fix and its verification boundary.
 
 ## Limitations
 
