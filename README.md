@@ -109,7 +109,7 @@ The browser rejects an empty file, a file over 1 MB, or a non-CSV name/media typ
 ```powershell
 dotnet test QualityWorkflow.sln --configuration Release
 cd web
-npm audit --audit-level=high
+npm audit --audit-level=low
 npm run lint
 npm run typecheck
 npm test
@@ -124,6 +124,10 @@ The backend inventory includes 8 AI-review tests for request limits, optimistic-
 The production build is also checked against deterministic gzip budgets: 55 KiB for all JavaScript and 5 KiB for all CSS. The current verified output is 48.81 KiB of JavaScript and 2.03 KiB of CSS. CI runs the dependency audit, ESLint, TypeScript checking, frontend tests, production build, bundle budgets, provider-independent backend tests, and the SQL Server path.
 
 See [AI-assisted development record](docs/ai-assisted-development.md) for the reviewed import-failure fix and its verification boundary.
+
+The [22 November 2026 dependency verification](docs/dependency-verification-20261122.md)
+records the Vite patch and compatible lockfile refresh. The current audit reports
+zero vulnerabilities, and CI rejects findings at low severity or above.
 
 ## Limitations
 
